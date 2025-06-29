@@ -10,7 +10,8 @@ import java.util.Random;
 public class PhilosophersPanel extends JPanel {
     private static final int NUM_PHILOSOPHERS = 5;
     private JButton startButton, stopButton;
-    private JLabel[] philosopherLabels, forkLabels;
+    private JLabel[] philosopherLabels;
+    private JPanel[] forkPanels;
     private JTextArea logArea;
     private JPanel tablePanel;
 
@@ -19,6 +20,9 @@ public class PhilosophersPanel extends JPanel {
     private Thread[] philosopherThreads;
     private boolean isRunning = false;
     private Random random = new Random();
+
+    // Estados de los palillos
+    private boolean[] forkInUse = new boolean[NUM_PHILOSOPHERS];
 
     public PhilosophersPanel() {
         initializeComponents();
@@ -31,7 +35,7 @@ public class PhilosophersPanel extends JPanel {
         stopButton.setEnabled(false);
 
         philosopherLabels = new JLabel[NUM_PHILOSOPHERS];
-        forkLabels = new JLabel[NUM_PHILOSOPHERS];
+        forkPanels = new JPanel[NUM_PHILOSOPHERS];
 
         String[] names = {"Aristóteles", "Platón", "Sócrates", "Kant", "Descartes"};
 
@@ -43,12 +47,33 @@ public class PhilosophersPanel extends JPanel {
             philosopherLabels[i].setPreferredSize(new Dimension(100, 80));
             philosopherLabels[i].setFont(new Font("Arial", Font.BOLD, 12));
 
-            forkLabels[i] = new JLabel("🍴", SwingConstants.CENTER);
-            forkLabels[i].setOpaque(true);
-            forkLabels[i].setBackground(Color.LIGHT_GRAY);
-            forkLabels[i].setBorder(BorderFactory.createLineBorder(Color.BLACK));
-            forkLabels[i].setPreferredSize(new Dimension(30, 30));
-            forkLabels[i].setFont(new Font("Arial", Font.PLAIN, 16));
+            // Crear paneles personalizados para los palillos
+            forkPanels[i] = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Graphics2D g2d = (Graphics2D) g;
+                    g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    int width = getWidth();
+                    int height = getHeight();
+
+                    // Dibujar el palillo como un rectángulo marrón
+                    g2d.setColor(new Color(139, 69, 19)); // Marrón
+                    g2d.fillRoundRect(width/4, height/6, width/2, height*2/3, 3, 3);
+
+                    // Borde más oscuro
+                    g2d.setColor(new Color(101, 67, 33));
+                    g2d.setStroke(new BasicStroke(1));
+                    g2d.drawRoundRect(width/4, height/6, width/2, height*2/3, 3, 3);
+                }
+            };
+            forkPanels[i].setOpaque(true);
+            forkPanels[i].setBackground(Color.LIGHT_GRAY);
+            forkPanels[i].setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            forkPanels[i].setPreferredSize(new Dimension(30, 30));
+
+            forkInUse[i] = false;
         }
 
         logArea = new JTextArea(12, 40);
@@ -105,7 +130,7 @@ public class PhilosophersPanel extends JPanel {
         // Añadir todos los componentes al panel
         for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
             tablePanel.add(philosopherLabels[i]);
-            tablePanel.add(forkLabels[i]);
+            tablePanel.add(forkPanels[i]);
         }
 
         // Listener para reposicionar cuando cambie el tamaño del panel
@@ -152,10 +177,24 @@ public class PhilosophersPanel extends JPanel {
             double forkAngle = 2 * Math.PI * (i + 0.5) / NUM_PHILOSOPHERS - Math.PI / 2;
             int forkX = (int) (centerX + forkRadius * Math.cos(forkAngle) - 15);
             int forkY = (int) (centerY + forkRadius * Math.sin(forkAngle) - 15);
-            forkLabels[i].setBounds(forkX, forkY, 30, 30);
+            forkPanels[i].setBounds(forkX, forkY, 30, 30);
         }
 
         tablePanel.repaint();
+    }
+
+    private void updateForkDisplay(int forkIndex, boolean inUse) {
+        SwingUtilities.invokeLater(() -> {
+            forkInUse[forkIndex] = inUse;
+            if (inUse) {
+                forkPanels[forkIndex].setBackground(new Color(255, 182, 193)); // Rosa claro para indicar uso
+                forkPanels[forkIndex].setBorder(BorderFactory.createLineBorder(Color.RED, 2));
+            } else {
+                forkPanels[forkIndex].setBackground(Color.LIGHT_GRAY);
+                forkPanels[forkIndex].setBorder(BorderFactory.createLineBorder(Color.BLACK));
+            }
+            forkPanels[forkIndex].repaint();
+        });
     }
 
     private void startSimulation() {
@@ -172,11 +211,7 @@ public class PhilosophersPanel extends JPanel {
             // Reset forks
             for (int i = 0; i < NUM_PHILOSOPHERS; i++) {
                 forks[i] = new Semaphore(1);
-                SwingUtilities.invokeLater(() -> {
-                    for (int j = 0; j < NUM_PHILOSOPHERS; j++) {
-                        forkLabels[j].setBackground(Color.LIGHT_GRAY);
-                    }
-                });
+                updateForkDisplay(i, false);
             }
 
             philosophers = new Philosopher[NUM_PHILOSOPHERS];
@@ -210,8 +245,8 @@ public class PhilosophersPanel extends JPanel {
                 SwingUtilities.invokeLater(() -> {
                     philosopherLabels[index].setText("<html><center>" + names[index] + "<br>Detenido</center></html>");
                     philosopherLabels[index].setBackground(new Color(158, 158, 158));
-                    forkLabels[index].setBackground(Color.LIGHT_GRAY);
                 });
+                updateForkDisplay(i, false);
             }
 
             log("Simulación detenida");
@@ -256,8 +291,15 @@ public class PhilosophersPanel extends JPanel {
         }
 
         private void eat() throws InterruptedException {
-            int leftFork = id;
-            int rightFork = (id + 1) % NUM_PHILOSOPHERS;
+            // El palillo izquierdo del filósofo i es el palillo i
+            // El palillo derecho del filósofo i es el palillo (i+1) % NUM_PHILOSOPHERS
+            // Pero visualmente, el palillo i está entre el filósofo i y el filósofo (i+1)
+
+            // Para el filósofo i:
+            // - Su palillo izquierdo es el palillo (i-1+NUM_PHILOSOPHERS) % NUM_PHILOSOPHERS
+            // - Su palillo derecho es el palillo i
+            int leftFork = (id - 1 + NUM_PHILOSOPHERS) % NUM_PHILOSOPHERS;
+            int rightFork = id;
 
             // Prevent deadlock by ordering fork acquisition
             int firstFork = Math.min(leftFork, rightFork);
@@ -268,20 +310,18 @@ public class PhilosophersPanel extends JPanel {
                 philosopherLabels[id].setBackground(Color.ORANGE);
             });
 
-            log(names[id] + " tiene hambre y busca tenedores");
+            log(names[id] + " tiene hambre y busca palillos");
 
             // Acquire forks in order
             forks[firstFork].acquire();
-            SwingUtilities.invokeLater(() -> {
-                forkLabels[firstFork].setBackground(Color.RED);
-            });
-            log(names[id] + " tomó el tenedor " + (firstFork + 1));
+            updateForkDisplay(firstFork, true);
+            log(names[id] + " tomó el palillo " + (firstFork + 1) + " (a su " +
+                    (firstFork == leftFork ? "izquierda" : "derecha") + ")");
 
             forks[secondFork].acquire();
-            SwingUtilities.invokeLater(() -> {
-                forkLabels[secondFork].setBackground(Color.RED);
-            });
-            log(names[id] + " tomó el tenedor " + (secondFork + 1));
+            updateForkDisplay(secondFork, true);
+            log(names[id] + " tomó el palillo " + (secondFork + 1) + " (a su " +
+                    (secondFork == leftFork ? "izquierda" : "derecha") + ")");
 
             // Eating
             SwingUtilities.invokeLater(() -> {
@@ -289,19 +329,17 @@ public class PhilosophersPanel extends JPanel {
                 philosopherLabels[id].setBackground(new Color(76, 175, 80));
             });
 
-            log(names[id] + " está comiendo");
+            log(names[id] + " está comiendo con palillos " + (leftFork + 1) + " y " + (rightFork + 1));
             Thread.sleep(1500 + random.nextInt(2500));
 
             // Release forks
             forks[firstFork].release();
+            updateForkDisplay(firstFork, false);
             forks[secondFork].release();
+            updateForkDisplay(secondFork, false);
 
-            SwingUtilities.invokeLater(() -> {
-                forkLabels[firstFork].setBackground(Color.LIGHT_GRAY);
-                forkLabels[secondFork].setBackground(Color.LIGHT_GRAY);
-            });
 
-            log(names[id] + " terminó de comer y liberó los tenedores");
+            log(names[id] + " terminó de comer y liberó los palillos " + (leftFork + 1) + " y " + (rightFork + 1));
         }
     }
 }
