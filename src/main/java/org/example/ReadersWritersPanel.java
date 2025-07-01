@@ -217,7 +217,7 @@ public class ReadersWritersPanel extends JPanel {
         }
 
         public void write(int writerId, String newData) throws InterruptedException {
-            writeMutex.acquire();
+            writeMutex.acquire();//<-----
 
             SwingUtilities.invokeLater(() -> {
                 writerLabels[writerId].setText("Escritor " + (writerId + 1) + ": Escribiendo");
@@ -232,7 +232,7 @@ public class ReadersWritersPanel extends JPanel {
             
             Thread.sleep(2000 + random.nextInt(3000));
 
-            writeMutex.release();
+            writeMutex.release();//<------
         }
 
         public void reset() {
@@ -260,7 +260,7 @@ public class ReadersWritersPanel extends JPanel {
                         readerLabels[id].setBackground(Color.YELLOW);
                     });
                     
-                    database.read(id);
+                    database.read(id);// <------
                     log("Lector " + (id + 1) + " terminó de leer");
                     
                     SwingUtilities.invokeLater(() -> {
@@ -294,7 +294,7 @@ public class ReadersWritersPanel extends JPanel {
                     });
                     
                     String newData = "Escritor " + (id + 1) + " - Entrada #" + writeCount++;
-                    database.write(id, newData);
+                    database.write(id, newData); // <------
                     log("Escritor " + (id + 1) + " escribió: " + newData);
                     
                     SwingUtilities.invokeLater(() -> {

@@ -300,8 +300,7 @@ public class PhilosophersPanel extends JPanel {
             // - Su palillo derecho es el palillo i
             int leftFork = (id - 1 + NUM_PHILOSOPHERS) % NUM_PHILOSOPHERS;
             int rightFork = id;
-
-            // Prevent deadlock by ordering fork acquisition
+            // Ordeno los palillos a agarrar
             int firstFork = Math.min(leftFork, rightFork);
             int secondFork = Math.max(leftFork, rightFork);
 
@@ -312,7 +311,7 @@ public class PhilosophersPanel extends JPanel {
 
             log(names[id] + " tiene hambre y busca palillos");
 
-            // Acquire forks in order
+            // Agarro los palillos en orden
             forks[firstFork].acquire();
             updateForkDisplay(firstFork, true);
             log(names[id] + " tomó el palillo " + (firstFork + 1) + " (a su " +
@@ -323,7 +322,7 @@ public class PhilosophersPanel extends JPanel {
             log(names[id] + " tomó el palillo " + (secondFork + 1) + " (a su " +
                     (secondFork == leftFork ? "izquierda" : "derecha") + ")");
 
-            // Eating
+            // Comer
             SwingUtilities.invokeLater(() -> {
                 philosopherLabels[id].setText("<html><center>" + names[id] + "<br>Comiendo</center></html>");
                 philosopherLabels[id].setBackground(new Color(76, 175, 80));
@@ -332,7 +331,7 @@ public class PhilosophersPanel extends JPanel {
             log(names[id] + " está comiendo con palillos " + (leftFork + 1) + " y " + (rightFork + 1));
             Thread.sleep(1500 + random.nextInt(2500));
 
-            // Release forks
+            // Dejo palillos
             forks[firstFork].release();
             updateForkDisplay(firstFork, false);
             forks[secondFork].release();

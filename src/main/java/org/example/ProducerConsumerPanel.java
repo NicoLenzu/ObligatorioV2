@@ -202,7 +202,7 @@ public class ProducerConsumerPanel extends JPanel {
             empty.acquire(); // Esperar a que haya espacio
             mutex.lock();
             try {
-                items[in] = item;
+                items[in] = item; //<---- Donde insertar el item
                 log(String.format("Productor insertó item %d en posición %d", item, in));
                 in = (in + 1) % BUFFER_SIZE;
                 count++;
@@ -259,13 +259,13 @@ public class ProducerConsumerPanel extends JPanel {
                     // Simular tiempo de producción
                     Thread.sleep(producerSpeedSlider.getValue() / 3);
 
-                    buffer.produce(itemCount);
+                    buffer.produce(itemCount);//<-----
                     log("Productor creó item: " + itemCount);
 
                     SwingUtilities.invokeLater(() ->
                             producerStatusLabel.setText("Productor: Item " + itemCount + " producido"));
 
-                    itemCount++;
+                    itemCount++;//<-----
 
                     // Pausa después de producir
                     Thread.sleep(producerSpeedSlider.getValue() / 3);
